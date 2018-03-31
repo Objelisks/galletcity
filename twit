@@ -1,0 +1,44 @@
+
+const Canvas = require('canvas');
+const fs = require('fs');
+const Image = Canvas.Image;
+const Twitter = require('twitter');
+let client = new Twitter(JSON.parse(fs.readFileSync('creds.json')));
+
+let tileSheet = new Image();
+tileSheet.src = fs.readFileSync('./galletcity_tiles.png');
+
+
+function post(canvas) {
+  client.post('media/upload', {media: canvas.toBuffer()}, (error, media, res) => {
+    if(!error) {
+      let status = {
+        status: '',
+        media_ids: media.media_id_string
+      };
+
+      client.post('statuses/update', status, (error, tweet, res) => {
+        if(!error) {
+          console.log('tweet success');
+        }
+      });
+    }
+  });
+}
+
+function render() {
+  let canvas = new Canvas(map.length*TILE_WIDTH, map[0].length*TILE_HEIGHT);
+  let ctx = canvas.getContext('2d');
+
+  map.forEach((row, x) => {
+    row.forEach((tile, y) => {
+      let src = tileToXY(tile.s);
+      ctx.drawImage(tileSheet, src.x, src.y, TILE_WIDTH, TILE_HEIGHT, x*TILE_WIDTH, y*TILE_HEIGHT, TILE_WIDTH, TILE_HEIGHT);
+    });
+  });
+
+  let out = fs.createWriteStream(__dirname + '/test.png');
+  let stream = canvas.pngStream();
+  stream.on('data', (chunk) => out.write(chunk));
+  stream.on('end', () => post(canvas));
+}
